@@ -1,0 +1,919 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import regex\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "\n",
+    "# Gensim\n",
+    "import gensim\n",
+    "import gensim.corpora as corpora\n",
+    "from gensim.utils import simple_preprocess\n",
+    "\n",
+    "# spacy for lemmatization\n",
+    "import spacy\n",
+    "\n",
+    "# Plotting tools\n",
+    "import pyLDAvis"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    }
+   ],
+   "source": [
+    "import nltk;"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    }
+   ],
+   "source": [
+    "from nltk.corpus import stopwords\n",
+    "stop_words = stopwords.words('english')\n",
+    "stop_words.extend(['from', 'subject', 're', 'edu', 'use', 'is', 'and', 'if', 'are', 'but', 'with', 'when', 'after', 'before', 'at', 'for', 'just', 'like', 'the', 'a', 'the', 'we']) "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Restaurant</th>\n",
+       "      <th>Review</th>\n",
+       "      <th>No_Of_Raters</th>\n",
+       "      <th>Time</th>\n",
+       "      <th>Cost</th>\n",
+       "      <th>American</th>\n",
+       "      <th>Asian</th>\n",
+       "      <th>French</th>\n",
+       "      <th>Indian</th>\n",
+       "      <th>Mediterranean</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>The ambience was good, food was quite good . h...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/25/19 15:54</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Ambience is too good for a pleasant evening. S...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/25/19 14:20</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>A must try.. great food great ambience. Thnx f...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/24/19 22:54</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Soumen das and Arun was a great guy. Only beca...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/24/19 22:11</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Food is good.we ordered Kodi drumsticks and ba...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/24/19 21:37</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Ambiance is good, service is good, food is aPr...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/24/19 15:22</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Its a very nice place, ambience is different, ...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/24/19 1:02</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Well after reading so many reviews finally vis...</td>\n",
+       "      <td>4</td>\n",
+       "      <td>5/23/19 15:01</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Excellent food , specially if you like spicy f...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/22/19 23:12</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Came for the birthday treat of a close friend....</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/22/19 22:37</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>The service was great and the food was awesome...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/22/19 22:22</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Very good ambience, amazing food ,good service...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/22/19 21:43</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Food was very good. Soup was as expected. In s...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/22/19 21:29</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>Food is too good. Telangana kodiak fry is must...</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5/22/19 21:21</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>Beyond Flavours</td>\n",
+       "      <td>We ordered corn cheese balls, manchow soup and...</td>\n",
+       "      <td>1</td>\n",
+       "      <td>5/22/19 21:19</td>\n",
+       "      <td>800</td>\n",
+       "      <td>0</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "         Restaurant                                             Review  \\\n",
+       "0   Beyond Flavours  The ambience was good, food was quite good . h...   \n",
+       "1   Beyond Flavours  Ambience is too good for a pleasant evening. S...   \n",
+       "2   Beyond Flavours  A must try.. great food great ambience. Thnx f...   \n",
+       "3   Beyond Flavours  Soumen das and Arun was a great guy. Only beca...   \n",
+       "4   Beyond Flavours  Food is good.we ordered Kodi drumsticks and ba...   \n",
+       "5   Beyond Flavours  Ambiance is good, service is good, food is aPr...   \n",
+       "6   Beyond Flavours  Its a very nice place, ambience is different, ...   \n",
+       "7   Beyond Flavours  Well after reading so many reviews finally vis...   \n",
+       "8   Beyond Flavours  Excellent food , specially if you like spicy f...   \n",
+       "9   Beyond Flavours  Came for the birthday treat of a close friend....   \n",
+       "10  Beyond Flavours  The service was great and the food was awesome...   \n",
+       "11  Beyond Flavours  Very good ambience, amazing food ,good service...   \n",
+       "12  Beyond Flavours  Food was very good. Soup was as expected. In s...   \n",
+       "13  Beyond Flavours  Food is too good. Telangana kodiak fry is must...   \n",
+       "14  Beyond Flavours  We ordered corn cheese balls, manchow soup and...   \n",
+       "\n",
+       "    No_Of_Raters           Time Cost  American  Asian  French  Indian  \\\n",
+       "0              5  5/25/19 15:54  800         0      1       0       0   \n",
+       "1              5  5/25/19 14:20  800         0      1       0       0   \n",
+       "2              5  5/24/19 22:54  800         0      1       0       0   \n",
+       "3              5  5/24/19 22:11  800         0      1       0       0   \n",
+       "4              5  5/24/19 21:37  800         0      1       0       0   \n",
+       "5              5  5/24/19 15:22  800         0      1       0       0   \n",
+       "6              5   5/24/19 1:02  800         0      1       0       0   \n",
+       "7              4  5/23/19 15:01  800         0      1       0       0   \n",
+       "8              5  5/22/19 23:12  800         0      1       0       0   \n",
+       "9              5  5/22/19 22:37  800         0      1       0       0   \n",
+       "10             5  5/22/19 22:22  800         0      1       0       0   \n",
+       "11             5  5/22/19 21:43  800         0      1       0       0   \n",
+       "12             5  5/22/19 21:29  800         0      1       0       0   \n",
+       "13             5  5/22/19 21:21  800         0      1       0       0   \n",
+       "14             1  5/22/19 21:19  800         0      1       0       0   \n",
+       "\n",
+       "    Mediterranean  \n",
+       "0               0  \n",
+       "1               0  \n",
+       "2               0  \n",
+       "3               0  \n",
+       "4               0  \n",
+       "5               0  \n",
+       "6               0  \n",
+       "7               0  \n",
+       "8               0  \n",
+       "9               0  \n",
+       "10              0  \n",
+       "11              0  \n",
+       "12              0  \n",
+       "13              0  \n",
+       "14              0  "
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df=pd.read_csv('/Users/peta/Documents/School bits/RestaurantReviews.csv')\n",
+    "df.head(15)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "# Convert to list\n",
+    "data = df['Review'].tolist()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "['the', 'ambience', 'was', 'good', 'food', 'was', 'quite', 'good', 'had', 'saturday', 'lunch', 'which', 'was', 'cost', 'effective', 'good', 'place', 'for', 'sate', 'brunch', 'one', 'can', 'also', 'chill', 'with', 'friends', 'and', 'or', 'parents', 'waiter', 'soumen', 'das', 'was', 'really', 'courteous', 'and', 'helpful']\n"
+     ]
+    }
+   ],
+   "source": [
+    "def sent_to_words(sentences):\n",
+    "    for sentence in sentences:\n",
+    "        yield(gensim.utils.simple_preprocess(str(sentence), deacc=True))  # deacc=True removes punctuations\n",
+    "        \n",
+    "data_words = list(sent_to_words(data))\n",
+    "\n",
+    "print(data_words[0])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "['food', 'is', 'good', 'we', 'ordered', 'kodi', 'drumsticks', 'and', 'basket', 'mutton', 'biryani', 'all', 'are', 'good', 'thanks', 'to', 'pradeep', 'he', 'served', 'well', 'we', 'enjoyed', 'here', 'ambience', 'is', 'also', 'very', 'good']\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Build the bigram models\n",
+    "bigram = gensim.models.Phrases(data_words, min_count=5, threshold=100) # higher threshold fewer phrases.\n",
+    "\n",
+    "# Faster way to get a sentence clubbed as a trigram/bigram\n",
+    "bigram_mod = gensim.models.phrases.Phraser(bigram)\n",
+    "\n",
+    "print(bigram_mod[data_words[4]])\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    }
+   ],
+   "source": [
+    "def remove_stopwords(texts):\n",
+    "    return [[word for word in simple_preprocess(str(doc)) if word not in stop_words] for doc in texts]\n",
+    "\n",
+    "def make_bigrams(texts):\n",
+    "    return [bigram_mod[doc] for doc in texts]\n",
+    "\n",
+    "\n",
+    "def lemmatization(texts, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']):\n",
+    "    texts_out = []\n",
+    "    for sent in texts:\n",
+    "        doc = nlp(\" \".join(sent)) \n",
+    "        texts_out.append([token.lemma_ for token in doc if token.pos_ in allowed_postags])\n",
+    "    return texts_out"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "['ambience', 'good', 'food', 'quite', 'good', 'saturday', 'lunch', 'cost_effective', 'good', 'place', 'sate', 'brunch', 'also', 'chill', 'friend', 'parent', 'waiter', 'soumen_da', 'really', 'courteous', 'helpful']\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Remove Stop Words\n",
+    "data_words_nostops = remove_stopwords(data_words)\n",
+    "\n",
+    "# Form Bigrams\n",
+    "data_words_bigrams = make_bigrams(data_words_nostops)\n",
+    "\n",
+    "# Initialize spacy 'en' model, keeping only tagger component (for efficiency)\n",
+    "#python3 -m spacy download en\n",
+    "nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])\n",
+    "\n",
+    "# Do lemmatization keeping only noun, adj, vb, adv\n",
+    "data_lemmatized = lemmatization(data_words_bigrams, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV'])\n",
+    "\n",
+    "print(data_lemmatized[0])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[(0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1), (8, 3), (9, 1), (10, 1), (11, 1), (12, 1), (13, 1), (14, 1), (15, 1), (16, 1), (17, 1), (18, 1)]\n"
+     ]
+    }
+   ],
+   "source": [
+    "id2word = corpora.Dictionary(data_lemmatized)\n",
+    "\n",
+    "# Create Corpus\n",
+    "texts = data_lemmatized\n",
+    "\n",
+    "# Term Document Frequency\n",
+    "corpus = [id2word.doc2bow(text) for text in texts]\n",
+    "\n",
+    "# View\n",
+    "print(corpus[0])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[(0, '0.066*\"good\" + 0.048*\"food\" + 0.047*\"place\" + 0.024*\"service\" + 0.016*\"great\" + 0.016*\"visit\" + 0.015*\"ambience\" + 0.014*\"really\" + 0.013*\"staff\" + 0.011*\"go\"'), (1, '0.047*\"chicken\" + 0.023*\"taste\" + 0.015*\"try\" + 0.015*\"rice\" + 0.014*\"order\" + 0.013*\"dish\" + 0.012*\"soup\" + 0.011*\"noodle\" + 0.011*\"fry\" + 0.010*\"biryani\"'), (2, '0.034*\"order\" + 0.019*\"restaurant\" + 0.016*\"get\" + 0.016*\"food\" + 0.014*\"bad\" + 0.013*\"time\" + 0.012*\"even\" + 0.011*\"take\" + 0.010*\"say\" + 0.010*\"quantity\"')]\n"
+     ]
+    }
+   ],
+   "source": [
+    "lda_model = gensim.models.ldamodel.LdaModel(corpus=corpus,\n",
+    "                                           id2word=id2word,\n",
+    "                                           num_topics=3, \n",
+    "                                           random_state=100,\n",
+    "                                           update_every=1,\n",
+    "                                           chunksize=100,\n",
+    "                                           passes=10,\n",
+    "                                           alpha='auto',\n",
+    "                                           per_word_topics=True)\n",
+    "# Print the KeywordS in the 20 topics\n",
+    "print(lda_model.print_topics())\n",
+    "doc_lda = lda_model[corpus]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "\n",
+       "<link rel=\"stylesheet\" type=\"text/css\" href=\"https://cdn.jsdelivr.net/gh/bmabey/pyLDAvis@3.3.1/pyLDAvis/js/ldavis.v1.0.0.css\">\n",
+       "\n",
+       "\n",
+       "<div id=\"ldavis_el1002020329342684801455597178\"></div>\n",
+       "<script type=\"text/javascript\">\n",
+       "\n",
+       "var ldavis_el1002020329342684801455597178_data = {\"mdsDat\": {\"x\": [-0.0992086629047774, -0.17877722327921367, 0.27798588618399106], \"y\": [-0.2396562323297464, 0.19790789277218088, 0.04174833955756557], \"topics\": [1, 2, 3], \"cluster\": [1, 1, 1], \"Freq\": [47.6994846185562, 27.10082985528539, 25.199685526158405]}, \"tinfo\": {\"Term\": [\"good\", \"place\", \"chicken\", \"order\", \"food\", \"great\", \"visit\", \"ambience\", \"service\", \"rice\", \"get\", \"restaurant\", \"bad\", \"staff\", \"even\", \"soup\", \"try\", \"take\", \"noodle\", \"nice\", \"fry\", \"say\", \"quantity\", \"amazing\", \"taste\", \"really\", \"burger\", \"time\", \"paratha\", \"less\", \"good\", \"place\", \"great\", \"ambience\", \"visit\", \"staff\", \"nice\", \"amazing\", \"awesome\", \"buffet\", \"friend\", \"ambiance\", \"excellent\", \"lunch\", \"dinner\", \"variety\", \"option\", \"friendly\", \"decent\", \"thank\", \"enjoy\", \"drink\", \"family\", \"courteous\", \"music\", \"polite\", \"especially\", \"team\", \"spread\", \"hangout\", \"view\", \"service\", \"really\", \"menu\", \"food\", \"donut\", \"starter\", \"love\", \"price\", \"go\", \"well\", \"overall\", \"also\", \"time\", \"try\", \"serve\", \"experience\", \"taste\", \"chinese\", \"restaurant\", \"bad\", \"even\", \"take\", \"quantity\", \"never\", \"ask\", \"less\", \"delivery\", \"say\", \"zomato\", \"wait\", \"customer\", \"deliver\", \"ever\", \"know\", \"think\", \"expect\", \"call\", \"do\", \"rating\", \"long\", \"hour\", \"min\", \"smell\", \"waste\", \"disappointed\", \"waiter\", \"manager\", \"late\", \"pathetic\", \"pack\", \"shawarma\", \"hotel\", \"cold\", \"use\", \"get\", \"order\", \"restaurant\", \"give\", \"review\", \"eat\", \"money\", \"table\", \"quality\", \"time\", \"first\", \"food\", \"come\", \"go\", \"experience\", \"taste\", \"serve\", \"chicken\", \"rice\", \"fry\", \"soup\", \"noodle\", \"paneer\", \"sauce\", \"spicy\", \"burger\", \"chocolate\", \"curry\", \"sweet\", \"kebab\", \"cheese\", \"flavour\", \"tikka\", \"prawn\", \"garlic\", \"paratha\", \"flavor\", \"masala\", \"wing\", \"fresh\", \"chilli\", \"mushroom\", \"butter\", \"spice\", \"soft\", \"hyderabadi\", \"corn\", \"salad\", \"fish\", \"mutton\", \"momos\", \"hot\", \"pork\", \"biryani\", \"taste\", \"dish\", \"try\", \"veg\", \"order\", \"well\", \"chinese\", \"serve\"], \"Freq\": [7702.0, 5520.0, 2909.0, 3121.0, 6703.0, 1913.0, 1872.0, 1802.0, 3035.0, 931.0, 1310.0, 1890.0, 899.0, 1553.0, 775.0, 727.0, 1839.0, 753.0, 706.0, 1307.0, 672.0, 696.0, 665.0, 1110.0, 2879.0, 1695.0, 552.0, 1772.0, 540.0, 552.0, 7702.1152028015595, 5519.332886499316, 1912.9015256070657, 1801.7791728991788, 1872.0828307674096, 1552.5194518542569, 1306.4510375321925, 1109.5061034691128, 859.1444025393184, 837.8468133483505, 732.9828520878839, 686.5710617750077, 519.7075742656476, 513.9549515946175, 530.4870471343377, 456.638213298107, 435.9360179656324, 404.99084714043624, 497.63239895202076, 436.6420674726067, 401.79035997603796, 423.71766752502805, 340.45245207639533, 355.9993799963062, 319.09250671128336, 308.94686569222563, 324.71989944236594, 285.89139901705585, 298.739249882352, 208.09063027257585, 255.49689123430034, 2804.4868299010473, 1585.6410683662423, 753.7128339199771, 5620.629170175425, 585.338087731363, 856.2686087954629, 1117.7233886563088, 747.2055081259739, 1336.9982076128524, 1232.6658947117542, 620.4111882498926, 894.5274042535937, 917.4155253727274, 885.4451961616043, 790.8868662263325, 679.5722418377516, 911.733894484056, 635.5037796593737, 649.5653284830087, 899.3425385534771, 775.2626331317646, 752.4267895069485, 664.4896550929038, 503.2827294973295, 479.5002471836412, 552.1926324116856, 392.73572387365357, 695.4007003621628, 333.8867802613352, 348.0497716362329, 327.9645694964725, 294.7000370006265, 329.7503706789399, 293.72878898708694, 296.9843395220166, 316.78933586694785, 242.8069731770145, 317.57760813443844, 251.2429877627441, 287.0365075684499, 206.73428457317934, 187.31839415412117, 186.9032704453765, 175.91958713162768, 215.1000774570121, 182.66063835028163, 202.68646855958661, 167.29183649937005, 149.49771605345535, 214.26911807163935, 189.26039489919435, 232.59428917080103, 259.2620832424577, 271.92836335069774, 1094.9292169465225, 2236.2658625624185, 1240.9491246649075, 638.3014333010075, 265.8702595854705, 457.348511829453, 375.7094453124867, 367.64554228880326, 555.5781325629092, 854.7157106055089, 390.68581356154823, 1082.6651677373113, 446.5464112811116, 542.161066843999, 441.0836674420829, 544.8012913968679, 447.8016725699006, 2908.4675653187555, 930.3702047001705, 671.4047383202887, 726.8828231009497, 706.0250757726776, 494.16748109169646, 514.0507308852672, 501.98073152883046, 552.0380010711201, 408.21001135834547, 373.91161846307, 370.8136972477807, 384.94512041211675, 326.3221107986638, 321.598923654236, 315.3863003853205, 347.8642745488442, 278.6069339401264, 538.9715710773875, 276.9146885756367, 248.45084637371255, 316.79327149808444, 298.16386406950437, 227.678759036676, 276.78012524935104, 228.54796616548364, 219.56320884888623, 218.13924102079145, 248.84650572839135, 195.3892023135515, 216.60065690066037, 410.99318391632266, 283.72327626610206, 226.55448604350886, 311.78570239350637, 263.32986596021306, 620.6075000096241, 1422.891206350114, 809.6217971219396, 953.4180385247905, 572.226069180277, 884.654480560443, 411.77281648440277, 359.49342429984955, 317.9504009697447], \"Total\": [7702.0, 5520.0, 2909.0, 3121.0, 6703.0, 1913.0, 1872.0, 1802.0, 3035.0, 931.0, 1310.0, 1890.0, 899.0, 1553.0, 775.0, 727.0, 1839.0, 753.0, 706.0, 1307.0, 672.0, 696.0, 665.0, 1110.0, 2879.0, 1695.0, 552.0, 1772.0, 540.0, 552.0, 7702.769411318976, 5520.0039929175255, 1913.5406745006946, 1802.392603263538, 1872.7444126365021, 1553.1545644984274, 1307.0499642195666, 1110.1303349440404, 859.7681522711592, 838.470326198962, 733.5980654186063, 687.2028897519717, 520.3428532804475, 514.5960990052147, 531.169285700434, 457.28054677883824, 436.55623935091745, 405.57118086807276, 498.3478303703309, 437.27376542293496, 402.41148855347876, 424.3936180921241, 341.0642137104715, 356.639654256787, 319.66984322149716, 309.5358792501964, 325.38470315459386, 286.4981340881949, 299.41761982093783, 208.65163860778557, 256.20785662312375, 3035.2595194679056, 1695.4606183006747, 791.2660708916701, 6703.573893054441, 611.5710015440493, 951.1494098240616, 1293.3738776980442, 861.5926757493119, 1879.4696107064633, 1804.3978047330304, 717.1917725689567, 1288.0177069052152, 1772.412182823828, 1839.2205859740525, 1556.6389397659777, 1120.9394610692632, 2879.4263922310383, 995.566300275324, 1890.8396932022667, 899.9244455509619, 775.9412992666335, 753.1246183415187, 665.2341481344275, 503.9291943303925, 480.1170264724673, 552.9100931465404, 393.33222614307454, 696.4606541790982, 334.4798769217566, 348.71543556453645, 328.59842124774053, 295.29074980744315, 330.4739891274449, 294.39569583353904, 297.66890459209117, 317.53146252710246, 243.4055384507698, 318.4266097554762, 251.9302287292996, 287.86448306958636, 207.36521310726144, 187.89035608491642, 187.51376687184015, 176.50060185618872, 215.82566389125648, 183.29736072922944, 203.4332902005353, 167.91512433249994, 150.05878739807406, 215.19873190519652, 190.05900987633336, 234.2196684879436, 261.81031210532166, 276.9687778819848, 1310.80686533392, 3121.2771459283395, 1890.8396932022667, 840.933554259836, 283.5890462505935, 574.9360394155295, 468.76114440159114, 454.9705778287797, 849.6661703738172, 1772.412182823828, 549.8339814587362, 6703.573893054441, 954.5997992088759, 1879.4696107064633, 1120.9394610692632, 2879.4263922310383, 1556.6389397659777, 2909.175888645141, 931.1257220307792, 672.1335534667795, 727.8187268924921, 706.9594282462866, 494.8552596115129, 514.7669295241573, 502.700722158974, 552.9795476111996, 409.0072220625839, 374.6457981242191, 371.5434712802122, 385.7559077598376, 327.0146463802718, 322.35478240192134, 316.1395711021806, 348.70600022060006, 279.3123583430544, 540.3375302427136, 277.62211930653183, 249.11863210098065, 317.66021290161905, 299.03786803419575, 228.34640676914108, 277.61853477793034, 229.24268582197092, 220.25647815838695, 218.8498816662206, 249.73545675748696, 196.09101397506168, 217.42716681837044, 431.0614434417454, 293.93812287443455, 228.73210819686042, 337.5451881270882, 275.5856414348368, 901.3184409249899, 2879.4263922310383, 1389.4318597567087, 1839.2205859740525, 1188.2110009479575, 3121.2771459283395, 1804.3978047330304, 995.566300275324, 1556.6389397659777], \"Category\": [\"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Default\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic1\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic2\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\", \"Topic3\"], \"logprob\": [30.0, 29.0, 28.0, 27.0, 26.0, 25.0, 24.0, 23.0, 22.0, 21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0, 11.0, 10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0, -2.7207, -3.0539, -4.1136, -4.1734, -4.1351, -4.3223, -4.4949, -4.6583, -4.914, -4.9391, -5.0728, -5.1382, -5.4167, -5.4278, -5.3962, -5.5461, -5.5925, -5.6661, -5.4601, -5.5908, -5.674, -5.6209, -5.8397, -5.795, -5.9045, -5.9368, -5.887, -6.0143, -5.9704, -6.332, -6.1267, -3.731, -4.3012, -5.0449, -3.0357, -5.2978, -4.9174, -4.6509, -5.0536, -4.4718, -4.553, -5.2396, -4.8737, -4.8484, -4.8839, -4.9968, -5.1485, -4.8546, -5.2155, -5.1936, -4.3029, -4.4514, -4.4813, -4.6056, -4.8834, -4.9318, -4.7907, -5.1315, -4.5601, -5.2938, -5.2522, -5.3117, -5.4186, -5.3063, -5.4219, -5.4109, -5.3464, -5.6123, -5.3439, -5.5782, -5.445, -5.7732, -5.8718, -5.874, -5.9346, -5.7335, -5.897, -5.7929, -5.9849, -6.0973, -5.7374, -5.8615, -5.6553, -5.5468, -5.4991, -4.1061, -3.392, -3.981, -4.6458, -5.5216, -4.9791, -5.1758, -5.1975, -4.7846, -4.3538, -5.1367, -4.1174, -5.003, -4.809, -5.0154, -4.8042, -5.0002, -3.0565, -4.1963, -4.5225, -4.4431, -4.4722, -4.829, -4.7895, -4.8133, -4.7182, -5.0201, -5.1078, -5.1162, -5.0788, -5.244, -5.2586, -5.2781, -5.18, -5.4021, -4.7422, -5.4081, -5.5166, -5.2736, -5.3342, -5.6039, -5.4086, -5.6001, -5.6402, -5.6467, -5.515, -5.7569, -5.6538, -5.0133, -5.3839, -5.6089, -5.2895, -5.4585, -4.6012, -3.7714, -4.3353, -4.1718, -4.6823, -4.2467, -5.0114, -5.1472, -5.27], \"loglift\": [30.0, 29.0, 28.0, 27.0, 26.0, 25.0, 24.0, 23.0, 22.0, 21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0, 11.0, 10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0, 0.7402, 0.7401, 0.7399, 0.7399, 0.7399, 0.7398, 0.7398, 0.7397, 0.7395, 0.7395, 0.7394, 0.7393, 0.739, 0.739, 0.739, 0.7388, 0.7388, 0.7388, 0.7388, 0.7388, 0.7387, 0.7387, 0.7385, 0.7385, 0.7384, 0.7383, 0.7382, 0.7381, 0.738, 0.7376, 0.7375, 0.6612, 0.6733, 0.6916, 0.5641, 0.6964, 0.6352, 0.5943, 0.5978, 0.3997, 0.3592, 0.5953, 0.3757, 0.0817, 0.0092, 0.0631, 0.2398, -0.4097, 0.2914, -0.3282, 1.305, 1.3047, 1.3047, 1.3045, 1.3043, 1.3043, 1.3043, 1.3041, 1.3041, 1.3038, 1.3037, 1.3037, 1.3036, 1.3034, 1.3033, 1.3033, 1.3033, 1.3031, 1.3029, 1.3029, 1.3027, 1.3026, 1.3026, 1.3023, 1.3023, 1.3022, 1.3021, 1.3019, 1.3019, 1.3019, 1.3013, 1.3014, 1.2986, 1.2958, 1.2872, 1.1257, 0.9722, 0.8845, 1.0299, 1.2411, 1.0768, 1.0843, 1.0925, 0.8808, 0.5763, 0.9639, -0.5176, 0.5459, 0.0624, 0.3729, -0.3593, 0.0597, 1.3781, 1.3775, 1.3773, 1.3771, 1.377, 1.3769, 1.3769, 1.3769, 1.3766, 1.3764, 1.3764, 1.3764, 1.3762, 1.3762, 1.376, 1.376, 1.3759, 1.3758, 1.3758, 1.3758, 1.3757, 1.3756, 1.3754, 1.3754, 1.3753, 1.3753, 1.3752, 1.3751, 1.3748, 1.3748, 1.3745, 1.3307, 1.343, 1.3688, 1.299, 1.3328, 1.0052, 0.6734, 0.8383, 0.7213, 0.6477, 0.1175, -0.0992, 0.3597, -0.2101]}, \"token.table\": {\"Topic\": [1, 2, 3, 1, 1, 1, 2, 1, 2, 2, 3, 1, 3, 3, 2, 3, 3, 3, 1, 2, 3, 3, 1, 2, 1, 2, 3, 3, 1, 3, 2, 1, 2, 2, 1, 2, 1, 2, 3, 2, 1, 2, 3, 1, 2, 3, 1, 1, 2, 2, 1, 2, 1, 2, 1, 1, 2, 3, 1, 3, 3, 3, 1, 2, 3, 1, 1, 3, 3, 1, 2, 1, 2, 3, 1, 2, 1, 1, 1, 2, 3, 1, 2, 2, 3, 3, 2, 2, 2, 2, 1, 3, 1, 2, 3, 1, 2, 3, 2, 1, 2, 3, 1, 2, 3, 1, 2, 3, 2, 1, 3, 1, 2, 3, 1, 3, 2, 3, 3, 1, 2, 3, 2, 1, 1, 1, 2, 3, 3, 1, 2, 1, 2, 2, 2, 1, 3, 1, 2, 2, 3, 3, 3, 3, 1, 2, 1, 2, 3, 1, 2, 2, 2, 3, 3, 3, 3, 1, 1, 1, 3, 3, 1, 2, 2, 1, 2, 3, 1, 1, 2, 3, 1, 2, 1, 3, 2, 3, 1, 1, 3, 1, 1, 2, 2, 2, 1, 2, 3, 3, 2], \"Freq\": [0.6948662236565532, 0.07530952368121302, 0.2298105052540109, 0.9998825949170671, 0.9997047600424891, 0.9997821766118952, 0.9997562542754896, 0.9991065588215496, 0.9989727520398717, 0.3106560204322973, 0.688990673887345, 0.9994390663756771, 0.998228600650004, 0.9989413584948164, 0.9983338980150124, 0.9968972448436089, 0.9995958000856081, 0.9984829769207129, 0.6388323909960734, 0.0010044534449623796, 0.36059878674149426, 0.9975373978544815, 0.007639118504986294, 0.9892658463957251, 0.41064328771582587, 0.46825905512493404, 0.12151689126284643, 0.9944361857642267, 0.9982064410136332, 0.9982762435146678, 0.9981788675506467, 0.9993020329393781, 0.9990153778686507, 0.9991553548857863, 0.9977986571665338, 0.9961743942941258, 0.38504946913602456, 0.03238733852546001, 0.5829720934582802, 0.9986602572071355, 0.9565528753375082, 0.00490539936070517, 0.03924319488564136, 0.9990725164673927, 0.7948710268094842, 0.2035008974545069, 0.9989774433255921, 0.9988176974797396, 0.998786893715384, 0.9985657293976559, 0.999341101202244, 0.9983262681345881, 0.6066340097897425, 0.39341999752540646, 0.9968797262577219, 0.20733531182913156, 0.7111237449578108, 0.0818428862483414, 0.0463970979179047, 0.9534603622129416, 0.9977591147705168, 0.9988994039446917, 0.8385079495914718, 0.16155561455391637, 0.9965293090101984, 0.9991847505510186, 0.998591663079092, 0.9983134996595054, 0.9988816880681277, 0.16478400114648112, 0.8353633391453557, 0.13199616002681544, 0.7586806315054797, 0.10821306813009193, 0.7113709061235859, 0.2883792304554851, 0.9999001123780434, 0.999717448127495, 0.9968769063491014, 0.07406415756869661, 0.9243206864573337, 0.004269496265858965, 0.994792629945139, 0.9982387927956241, 0.9970550567106651, 0.9980404505941922, 0.9986559048276209, 0.9945500779864961, 0.9983539943332177, 0.9969969095861771, 0.8644058916589719, 0.13530503670869418, 0.9988416177146173, 0.9978701116218088, 0.9955096409628357, 0.9529032366449438, 0.003791392188242482, 0.044232908862828955, 0.9952612997097412, 0.004371926652026224, 0.004371926652026224, 0.9924273500099529, 0.198395283207019, 0.8021142632885929, 0.9977719975417884, 0.9979045780022702, 0.034020765670711696, 0.9661897450482122, 0.9981561014109787, 0.9991966915968713, 0.9986428807538975, 0.998725847208725, 0.7163734251912969, 0.28353778233197574, 0.8644828673636076, 0.13385541172081666, 0.9944296516313832, 0.004646867530987772, 0.9982716974410167, 0.0018506950637887604, 0.0018506950637887604, 0.9975246393821419, 0.9929441826338012, 0.9998181173566516, 0.9982687653156899, 0.02177181644428569, 0.025400452518333304, 0.9543312874745228, 0.997975371171837, 0.8669990136004201, 0.13231310247717254, 0.3460182484029609, 0.6543746466396132, 0.9981447913672373, 0.9963075938366287, 0.9354390086569012, 0.06428931396191818, 0.3437626163322076, 0.6563221644127225, 0.9379769900031648, 0.059945897857345116, 0.998791009630446, 0.9980353567375172, 0.9985101422018967, 0.0014358312906831419, 0.9979027470247837, 0.5081460959205591, 0.2877995587514671, 0.20428629393519318, 0.9238089797644564, 0.07610551866105186, 0.9944279943527937, 0.9972601111885758, 0.9961165998366095, 0.9988750950446305, 0.9988355477190436, 0.9986060848371879, 0.9986052263016867, 0.9999004835050159, 0.8999637608547096, 0.09987915570233342, 0.9985372605839645, 0.19122115635517192, 0.808843511939118, 0.9985067300760991, 0.3167297495295109, 0.189273808655245, 0.49419565085580486, 0.9982613007593217, 0.999373926714606, 0.9977528570106851, 0.9963953544372581, 0.5173740109024892, 0.482393434374731, 0.48118208699328113, 0.5181542699486971, 0.9820601516171545, 0.018052576316491813, 0.9993864887084866, 0.5184264406814563, 0.4813959806327808, 0.9952856378448204, 0.9996025017447767, 0.9979483685218057, 0.9983777140704786, 0.9971637385316305, 0.6833304700137498, 0.08867224266196266, 0.22833102485455387, 0.9979216380434036, 0.9985653040590275], \"Term\": [\"also\", \"also\", \"also\", \"amazing\", \"ambiance\", \"ambience\", \"ask\", \"awesome\", \"bad\", \"biryani\", \"biryani\", \"buffet\", \"burger\", \"butter\", \"call\", \"cheese\", \"chicken\", \"chilli\", \"chinese\", \"chinese\", \"chinese\", \"chocolate\", \"cold\", \"cold\", \"come\", \"come\", \"come\", \"corn\", \"courteous\", \"curry\", \"customer\", \"decent\", \"deliver\", \"delivery\", \"dinner\", \"disappointed\", \"dish\", \"dish\", \"dish\", \"do\", \"donut\", \"donut\", \"donut\", \"drink\", \"eat\", \"eat\", \"enjoy\", \"especially\", \"even\", \"ever\", \"excellent\", \"expect\", \"experience\", \"experience\", \"family\", \"first\", \"first\", \"first\", \"fish\", \"fish\", \"flavor\", \"flavour\", \"food\", \"food\", \"fresh\", \"friend\", \"friendly\", \"fry\", \"garlic\", \"get\", \"get\", \"give\", \"give\", \"give\", \"go\", \"go\", \"good\", \"great\", \"hangout\", \"hot\", \"hot\", \"hotel\", \"hotel\", \"hour\", \"hyderabadi\", \"kebab\", \"know\", \"late\", \"less\", \"long\", \"love\", \"love\", \"lunch\", \"manager\", \"masala\", \"menu\", \"menu\", \"menu\", \"min\", \"momos\", \"momos\", \"momos\", \"money\", \"money\", \"mushroom\", \"music\", \"mutton\", \"mutton\", \"never\", \"nice\", \"noodle\", \"option\", \"order\", \"order\", \"overall\", \"overall\", \"pack\", \"pack\", \"paneer\", \"paratha\", \"paratha\", \"paratha\", \"pathetic\", \"place\", \"polite\", \"pork\", \"pork\", \"pork\", \"prawn\", \"price\", \"price\", \"quality\", \"quality\", \"quantity\", \"rating\", \"really\", \"really\", \"restaurant\", \"restaurant\", \"review\", \"review\", \"rice\", \"salad\", \"sauce\", \"say\", \"say\", \"serve\", \"serve\", \"serve\", \"service\", \"service\", \"shawarma\", \"smell\", \"soft\", \"soup\", \"spice\", \"spicy\", \"spread\", \"staff\", \"starter\", \"starter\", \"sweet\", \"table\", \"table\", \"take\", \"taste\", \"taste\", \"taste\", \"team\", \"thank\", \"think\", \"tikka\", \"time\", \"time\", \"try\", \"try\", \"use\", \"use\", \"variety\", \"veg\", \"veg\", \"view\", \"visit\", \"wait\", \"waiter\", \"waste\", \"well\", \"well\", \"well\", \"wing\", \"zomato\"]}, \"R\": 30, \"lambda.step\": 0.01, \"plot.opts\": {\"xlab\": \"PC1\", \"ylab\": \"PC2\"}, \"topic.order\": [1, 3, 2]};\n",
+       "\n",
+       "function LDAvis_load_lib(url, callback){\n",
+       "  var s = document.createElement('script');\n",
+       "  s.src = url;\n",
+       "  s.async = true;\n",
+       "  s.onreadystatechange = s.onload = callback;\n",
+       "  s.onerror = function(){console.warn(\"failed to load library \" + url);};\n",
+       "  document.getElementsByTagName(\"head\")[0].appendChild(s);\n",
+       "}\n",
+       "\n",
+       "if(typeof(LDAvis) !== \"undefined\"){\n",
+       "   // already loaded: just create the visualization\n",
+       "   !function(LDAvis){\n",
+       "       new LDAvis(\"#\" + \"ldavis_el1002020329342684801455597178\", ldavis_el1002020329342684801455597178_data);\n",
+       "   }(LDAvis);\n",
+       "}else if(typeof define === \"function\" && define.amd){\n",
+       "   // require.js is available: use it to load d3/LDAvis\n",
+       "   require.config({paths: {d3: \"https://d3js.org/d3.v5\"}});\n",
+       "   require([\"d3\"], function(d3){\n",
+       "      window.d3 = d3;\n",
+       "      LDAvis_load_lib(\"https://cdn.jsdelivr.net/gh/bmabey/pyLDAvis@3.3.1/pyLDAvis/js/ldavis.v3.0.0.js\", function(){\n",
+       "        new LDAvis(\"#\" + \"ldavis_el1002020329342684801455597178\", ldavis_el1002020329342684801455597178_data);\n",
+       "      });\n",
+       "    });\n",
+       "}else{\n",
+       "    // require.js not available: dynamically load d3 & LDAvis\n",
+       "    LDAvis_load_lib(\"https://d3js.org/d3.v5.js\", function(){\n",
+       "         LDAvis_load_lib(\"https://cdn.jsdelivr.net/gh/bmabey/pyLDAvis@3.3.1/pyLDAvis/js/ldavis.v3.0.0.js\", function(){\n",
+       "                 new LDAvis(\"#\" + \"ldavis_el1002020329342684801455597178\", ldavis_el1002020329342684801455597178_data);\n",
+       "            })\n",
+       "         });\n",
+       "}\n",
+       "</script>"
+      ],
+      "text/plain": [
+       "PreparedData(topic_coordinates=              x         y  topics  cluster       Freq\n",
+       "topic                                                \n",
+       "0     -0.099209 -0.239656       1        1  47.699485\n",
+       "2     -0.178777  0.197908       2        1  27.100830\n",
+       "1      0.277986  0.041748       3        1  25.199686, topic_info=        Term         Freq        Total Category  logprob  loglift\n",
+       "8       good  7702.000000  7702.000000  Default  30.0000  30.0000\n",
+       "12     place  5520.000000  5520.000000  Default  29.0000  29.0000\n",
+       "477  chicken  2909.000000  2909.000000  Default  28.0000  28.0000\n",
+       "49     order  3121.000000  3121.000000  Default  27.0000  27.0000\n",
+       "6       food  6703.000000  6703.000000  Default  26.0000  26.0000\n",
+       "..       ...          ...          ...      ...      ...      ...\n",
+       "153      veg   572.226069  1188.211001   Topic3  -4.6823   0.6477\n",
+       "49     order   884.654481  3121.277146   Topic3  -4.2467   0.1175\n",
+       "52      well   411.772816  1804.397805   Topic3  -5.0114  -0.0992\n",
+       "359  chinese   359.493424   995.566300   Topic3  -5.1472   0.3597\n",
+       "50     serve   317.950401  1556.638940   Topic3  -5.2700  -0.2101\n",
+       "\n",
+       "[177 rows x 6 columns], token_table=      Topic      Freq      Term\n",
+       "term                           \n",
+       "0         1  0.694866      also\n",
+       "0         2  0.075310      also\n",
+       "0         3  0.229811      also\n",
+       "26        1  0.999883   amazing\n",
+       "53        1  0.999705  ambiance\n",
+       "...     ...       ...       ...\n",
+       "52        1  0.683330      well\n",
+       "52        2  0.088672      well\n",
+       "52        3  0.228331      well\n",
+       "1042      3  0.997922      wing\n",
+       "496       2  0.998565    zomato\n",
+       "\n",
+       "[191 rows x 3 columns], R=30, lambda_step=0.01, plot_opts={'xlab': 'PC1', 'ylab': 'PC2'}, topic_order=[1, 3, 2])"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import pyLDAvis.gensim_models\n",
+    "pyLDAvis.enable_notebook()\n",
+    "vis = pyLDAvis.gensim_models.prepare(lda_model, corpus, id2word)\n",
+    "vis"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Topic one seems to be all about the experience and service at the place they visited. The second topic seems to carry more of a negative connotation relating to the service experienced. The \n",
+    "# third topic seems to deal with different dishes and descriptions of food. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    }
+   ],
+   "source": [
+    "df=pd.read_csv('/Users/peta/Documents/School bits/RestaurantReviews.csv')\n",
+    "\n",
+    "df['Time'] = pd.to_datetime(df['Time'], errors='coerce')\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>American</th>\n",
+       "      <th>French</th>\n",
+       "      <th>Indian</th>\n",
+       "      <th>Asian</th>\n",
+       "      <th>Mediterranean</th>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Time</th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>2016-06-30</th>\n",
+       "      <td>2</td>\n",
+       "      <td>0</td>\n",
+       "      <td>5</td>\n",
+       "      <td>4</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2016-09-30</th>\n",
+       "      <td>1</td>\n",
+       "      <td>3</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2016-12-31</th>\n",
+       "      <td>5</td>\n",
+       "      <td>2</td>\n",
+       "      <td>17</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2017-03-31</th>\n",
+       "      <td>4</td>\n",
+       "      <td>4</td>\n",
+       "      <td>12</td>\n",
+       "      <td>4</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2017-06-30</th>\n",
+       "      <td>7</td>\n",
+       "      <td>2</td>\n",
+       "      <td>9</td>\n",
+       "      <td>4</td>\n",
+       "      <td>2</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "            American  French  Indian  Asian  Mediterranean\n",
+       "Time                                                      \n",
+       "2016-06-30         2       0       5      4              0\n",
+       "2016-09-30         1       3       1      1              0\n",
+       "2016-12-31         5       2      17      1              1\n",
+       "2017-03-31         4       4      12      4              0\n",
+       "2017-06-30         7       2       9      4              2"
+      ]
+     },
+     "execution_count": 22,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df=df.set_index('Time')\n",
+    "\n",
+    "regions = df.resample('Q')['American', 'French', 'Indian', 'Asian', 'Mediterranean'].sum()\n",
+    "regions.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\peta\\anaconda3\\lib\\site-packages\\ipykernel\\ipkernel.py:287: DeprecationWarning: `should_run_async` will not call `transform_cell` automatically in the future. Please pass the result to `transformed_cell` argument and any exception that happen during thetransform in `preprocessing_exc_tuple` in IPython 7.17 and above.\n",
+      "  and should_run_async(code)\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<AxesSubplot:title={'center':'Region - Quarterly'}, xlabel='Time'>"
+      ]
+     },
+     "execution_count": 23,
+     "metadata": {},
+     "output_type": "execute_result"
+    },
+    {
+     "data": {
+      "image/png": "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EXgnKJE9C/jWWptujHkKwFr7gDHmWNw0AT2ARsBsoK211meMWQDchZuL7gvgRWvtl/kFGB8fbxcuXFiQ1yQiIiIiIiLlhDFmkbU2viD75Nu12Fr7PbA7x7pZ1tr0wOJPQJPA4wuBadbaFGvtemAt0MMY0xCobq2dH2iFfQdVMhQREREREZFCKI4xstcBGS2rjYGNQc9tCqxrHHicc32ujDE3GmMWGmMW7tixoxhCFBERERERkYqiSImsMWY4kA5MyViVy2b2COtzZa2dYK2Nt9bG16tXoK7SIiIiIiIiUsHlW+wpL8aYa3FFoE4PKtq0CWgatFkTYEtgfZNc1hdKWloamzZtIjk5ubCHkFIUExNDkyZNiIyMDHcoIiIiIiJSARQqkTXG9AMeAE611h4Kemom8J4x5llcsac2wIJAsacDxpgTgZ+BQcBLhQ1606ZNVKtWjRYtWmBMbo29UlZYa9m1axebNm2iZcuW4Q5HREREREQqgHy7FhtjpgLzgWOMMZuMMdcD/wdUA742xvxmjHkVwFq7ApgO/A58BdxmrfUFDnUL8AauANQ6ssbVFlhycjJ16tRRElsOGGOoU6eOWs9FRERERKTY5Nsia629MpfVbx5h+1HAqFzWLwQ6Fii6I1ASW37osxIREZGyLjUVoqLCHYWIhKo4qhZXWp988gnGGFatWlUix1+4cCF33nlniRxbRERERJyXXoJateCjj8IdiYiESolsEUydOpVevXoxbdq0Yj92eno68fHxvPjii8V+bBERERFxkpLgiScgJQUuuwyefhpsnnNriEhZoUS2kBITE5k3bx5vvvlmZiI7Z84cTj31VC6//HLatm3L0KFDmTJlCj169KBTp06sW7cOgB07dnDppZdy/PHHc/zxxzNv3jwARo4cyY033shZZ53FoEGDmDNnDuedd17m+YYMGUKnTp3o3LkzHwV+MrzllluIj4+nQ4cOjBgxIjO+Fi1aMGLECLp160anTp1KrNVYREREpDx74w3Yvh2++AKuuAIeeABuvBHS0sIdmYgcSaGn3ykr7r77bn777bdiPWaXLl14/vnnj7jNjBkz6NevH23btqV27dr8+uuvACxZsoSVK1dSu3ZtWrVqxQ033MCCBQt44YUXeOmll3j++ee56667uOeee+jVqxd//fUXffv2ZeXKlQAsWrSIH374gdjYWObMmZN5vscff5waNWqwbNkyAPbs2QPAqFGjqF27Nj6fj9NPP52lS5fSuXNnAOrWrcuvv/7K+PHjGTduHG+88Uaxvk8iIiIi5VlqqmuB7dULzjoLzjgDWreGUaMgIQE++ABq1gx3lCKSG7XIFtLUqVMZMGAAAAMGDGDq1KkAHH/88TRs2JDo6GiOPvpozjrrLAA6depEQkICALNnz+b222+nS5cuXHDBBezfv58DBw4AcMEFFxAbG3vY+WbPns1tt92WuVyrVi0Apk+fTrdu3ejatSsrVqzg999/z9zmkksuAaB79+6Z5xYRERERZ/Jk2LQJhg93yx6P62b81lswZw707OkSWhEpe8p9i2x+LaclYdeuXXz77bcsX74cYww+nw9jDOeccw7R0dGZ23k8nsxlj8dDeno6AH6/n/nz5+easMbFxeV6TmvtYdV/169fz7hx4/jll1+oVasWgwcPzjbNTca5vV5v5rlFREREBNLTYcwY6N4d+vbN/tzgwdC8OVxyCZxwAsyc6e5FpOxQi2whfPjhhwwaNIgNGzaQkJDAxo0badmyJT/88ENI+5911ln83//9X+ZyKF2jc+6zZ88e9u/fT1xcHDVq1GDbtm18+WWhp+YVERERqVQ++ADWroUHH4TcZgr8xz9g/nyoWhX69IEPPyz1EEXkCJTIFsLUqVO5+OKLs6279NJLee+990La/8UXX2ThwoV07tyZY489lldffTXffR566CH27NlDx44dOe644/jf//7HcccdR9euXenQoQPXXXcdPXv2LNTrEREREalM/H548kk49li46KK8t2vXDn76Cbp1g/794amnVNFYpKwwtoz/a4yPj7cLFy7Mtm7lypW0b98+TBFJYegzExERkbLi009dAjt5Mlx9df7bJyfDkCEwbRpcfz288gpERpZ4mCKVhjFmkbU2viD7lPsxsiIiIiIiobLWVSVu1QoCdTvzFRMDU6a4isZPPOEKQH34oSoai4STuhaLiIiISKUxezb88oubLzaiAE06Hg88/riraPz9966i8fr1JReniByZElkRERERqTRGjYLGjeHaawu3/+DBMGsWbNkCJ54IP/9crOGJSIjUtVhEREREKoV58+C77+C55yBoxsQC69PHFYE65xz3ePJkuOyy4opSKoJvvnEt97VquVvt2u6W8bhWraL9DYoSWRERERGpJEaNgrp14Z//LPqxjjnGJbMXXeQqGo8e7bor5zaVj1QeiYlw333w2mv5b1ulSvbENvg+t3UZ9zVquK7ulZ0SWRERERGp8H79Fb780iWzcXHFc8x69VzL25AhMGyYm5dWFY0rr3nzYNAgN3b6vvvg0Uddxes9e2D37rzvMx6vXZu1Likp7/MY4wqNhZL05ryPja04P7YokS0kr9dLp06dMpdnzJhBixYtiv08c+bMYdy4cXz22WfFfmwRERGRyuLJJ11L1m23Fe9xVdFYUlJgxAgYOxaaNYM5c+CUU9xzVaq4BPLoowt2zIwEONQkeP36rO19vryPGxVV8OS3dm3391yQ4miloYyFU37Exsby22+/5fqctRZrLR61+YuIiIiE3cqV8PHH8OCDLpktbhkVjVu3dt2WTz4ZPv8cWrYs/nNJ2bJkCVxzDSxbBjfcAM8+C9WqFf24MTHQsKG7FYS1cODAkZPe4PuNG91r2LPH7Xck1asXLPnNeFy1asm0AiuRLSYJCQmcffbZ/OMf/2D+/PnMmDGD6dOnM336dFJSUrj44ot59NFHM7fr1asXP/74I40bN+bTTz8lNjaWtWvXcvPNN7Njxw68Xi8ffPABAImJiVx22WUsX76c7t278+6772IqSp8AERERkRI2erTrUnn33SV7nmuvhebN4ZJL4IQTYOZMV9lYKh6fz7XAPvKIS9b+8x8477xwR+USxurV3a2gnUXT0mDv3vyT34z7FSuytklLy/u4ERHZi17llvQWRvlPZO++G/JoGS20Ll3g+eePuElSUhJdunQBoGXLljz33HOsXr2at956i/HjxzNr1izWrFnDggULsNZywQUX8P3339OsWTPWrFnD1KlTef3117n88sv56KOPuPrqq7nqqqsYOnQoF198McnJyfj9fjZu3MjixYtZsWIFjRo1omfPnsybN49evXoV72sWERERqYD+/BPeew/uvNMVeippffrA/Plw7rnwj3/AO++4YlBScaxb58bC/vgjXHopvPpq6fxtlbTISDfuu169gu1nLRw6FFryu2cPbN8Oq1e75X373P6FUf4T2TDJ2bU4ISGB5s2bc2LgZ7dZs2Yxa9YsunbtCrhW1TVr1tCsWTNatmyZmQR3796dhIQEDhw4wObNm7n44osBiImJyTx2jx49aNKkCQBdunQhISFBiayIiIhICJ5+GrxeV3yntARXNL78cjc+d+jQilNkp7Ky1lUjvu8+18r47rswcKA+V2NcAbW4OAikLCHz+VwyW6dOwc9b/hPZfFpOS1NcUAk8ay3Dhg3jpptuyrZNQkIC0UGTRnm9XpKSkrBH+Cki5/bp6enFGLWIiIhIxbR5M7z1lqsq3KhR6Z67bl2YPRuuu86NzV271rXcqaJx+bRlC1x/PXz1FZxxhvu7KmjSJofzegvftVjViEpI3759mThxIomJiQBs3ryZ7du357l99erVadKkCTNmzAAgJSWFQ4cOlUaoIiIiIhXSM8+4Fp8HHgjP+TMqGj/8MEycCP36uTGIUr68/z507AjffQf/93/w3/8qiS0LlMiWkLPOOouBAwdy0kkn0alTJy677DIO5FMKbPLkybz44ot07tyZk08+mb///ruUohURERGpWHbudN1ABw4Mb/VgY+Cxx2DSJJg711U0Xr8+fPFI6HbvhiuvhAEDoG1bV5bntttclWoJP3OkLq1lQXx8vF24cGG2dStXrqR9+/ZhikgKQ5+ZiIiIlKaHHnJjU1esgLLyFeS77+Dii934yk8/hZNOCndEkpevvnLdwnfsgJEjXat+WZtHtSIxxiyy1sYXZB/9niAiIiIiFcq+fa4L6KWXlp0kFuDUU11F4+rVXUXj6dPDHZHklJgIt9wCZ5/txm4uWADDhyuJLYvyTWSNMRONMduNMcuD1tU2xnxtjFkTuK8V9NwwY8xaY8xqY0zfoPXdjTHLAs+9aDQRqoiIiIiUgJdfdsnsgw+GO5LDZVQ0jo+HK65wrcZlvINkpfHjj24WzozKxAsXQmACEimDQmmRfRvol2PdUOAba20b4JvAMsaYY4EBQIfAPuONMd7APq8ANwJtArecxxQRERERKZKDB+G55+Ccc8puEpJR0XjgQNfad/31kJoa7qgqr5QUGDYMevd2xcHmzIGxY12xLim78k1krbXfA7tzrL4QmBR4PAm4KGj9NGttirV2PbAW6GGMaQhUt9bOt25Q7jtB+4iIiIiIFIvXX3eFnoYPD3ckRxYT4+YhfeQRN5XL2WfDnj3hjqryWboUevSAMWPcmNilS+GUU8IdlYSisGNkj7LWbgUI3NcPrG8MbAzablNgXePA45zrc2WMudEYs9AYs3DHjh2FDFFEREREKpOUFNeS1qePqw5c1hkDjz6avaLxn3+GO6rKweeDp55yXby3bYP//Mf9CFKtWrgjk1AVd7Gn3Ma92iOsz5W1doK1Nt5aG1+vXr1iC05EREREKq5Jk2DLlrLfGpvToEHw9dcuoTrxRFcQSkrOunWu8NbQoXDBBbB8OZx3XrijkoIqbCK7LdBdmMD99sD6TUDToO2aAFsC65vksr7cqlq1aoG2nzNnDucF/oXMnDmTMWPGlERYIiIiIpVSerrrHtqjB5x+erijKbicFY3ffz/cEVU81rpCTscd55LXyZPhgw/cmGUpfwqbyM4Erg08vhb4NGj9AGNMtDGmJa6o04JA9+MDxpgTA9WKBwXtU+lccMEFDB06NNxhiIiIiFQYU6fC+vWuNba8zo2RUdH4+ONhwABVNC5OW7a4AmA33+zm7122DK6+uvz+rUho0+9MBeYDxxhjNhljrgfGAGcaY9YAZwaWsdauAKYDvwNfAbdZa32BQ90CvIErALUO+LKYX0tYzJkzhz59+nDZZZfRrl07rrrqKmzgivPVV1/Rrl07evXqxccff5y5z9tvv83tt98OwH/+8x9OOOEEunbtyhlnnMG2bdsAGDlyJNdddx19+vShVatWvPjii6X/4kRERETKAb8fRo+GTp3KfxdRVTQufu+/Dx07wnffwUsvwX//C02b5r+flG35Tu1rrb0yj6dy7bRhrR0FjMpl/UKgY4GiC8Hdd8NvvxXvMbt0geefD337xYsXs2LFCho1akTPnj2ZN28e8fHx/POf/+Tbb7+ldevWXHHFFbnu26tXL3766SeMMbzxxhs8/fTTPPPMMwCsWrWK//3vfxw4cIBjjjmGW265hcjIyKK/QBEREZEK5JNPYOVK1yrrKe4KMGEQHe0qGrdp44pBJSTARx9BrVrhjqx82b0bbrsNpk2DE06Ad96Btm3DHZUUlwrwTz38evToQZMmTfB4PHTp0oWEhARWrVpFy5YtadOmDcYYrr766lz33bRpE3379qVTp06MHTuWFStWZD537rnnEh0dTd26dalfv35ma62IiIiIONbCqFEu6evfP9zRFB9jYORIl3z98IMqGhfUV1+5VtgPP4QnnnDvoZLYiiXfFtmyriAtpyUlOjo687HX6yU9PR0AE0Kn+zvuuIN//etfXHDBBcyZM4eRI0fme1wRERERcb76ChYvhjffBK833NEUv2uugWbN4OKLXavip5+Wj6mFwuXgQbjvPnj1VTj2WPjsM+jWLdxRSUlQi2wJadeuHevXr2fdunUATJ06Ndft9u3bR+PGbkrdSZMmlVp8IiIiIuVdRmts06aucE9FdeqprghUzZpw2mmuq6wc7scfXUXi116De++FRYuUxFZkSmRLSExMDBMmTODcc8+lV69eNG/ePNftRo4cSf/+/enduzd1VftbREREJGTffw/z5sH990NUVLijKVlt27rpeY4/Hq680iXwqmjspKTAgw9C797g88H//gfjxkFMTLgjk5JkbBn/FxAfH28XLlyYbd3KlStp3759mCKSwtBnJiIiIsXtrLNg6VI37U5sbLijKR0pKa6S8ZQpMHiwa32s6En8kSxd6rpfL13q3pdnn3Vz8Ur5YoxZZK2NL8g+apEVERERkXLnl1/g66/hX/+qPEksuIrGkyfDiBHw9tvQrx/s2RPuqEqfzwdPP+1aqP/+G2bOhDfeUBJbmSiRFREREZFyZ9QoNx3NLbeEO5LSl7Oi8UknQaAsS6Wwbp0bN/zAA27e4OXL4fzzwx2VlDYlsiIiIiJSrixb5qr33nknVKsW7mjC55prYPZs2LEDTjzRjReuyKyFCRNcQafly13L9IcfQr164Y5MwkGJrIiIiIiUK6NHQ9WqLpGt7E45Jaui8emnV9yKxlu3wrnnwk03uaR92TJXqTqE2S6lglIiKyIiIiLlxtq18P77rktx7drhjqZsaNPGJbM9elTMisbTp0PHjjBnDrz0Esya5aZckspNiayIiIiIlBtjxkBkpCvyJFnq1HHFr666Ch56CIYMgdTUcEdVNLt3w8CBcMUV0Lo1LF4Mt98OHmUwghLZIvnkk08wxrBq1aojbnfOOeewd+/e0glKREREpILauNEVOLrhBmjQINzRlD0ZFY1HjoRJk6BvX5cMlkf//S906gQffACPP+7G/x5zTLijkrJEiWwRTJ06lV69ejEtn8EIX3zxBTVr1iydoEREREQqqLFjXZfZ++8PdyRllzFuap7Jk+HHH8tfReODB+HWW920QjVrws8/uxbmiIhwRyZljRLZQkpMTGTevHm8+eabmYns1q1bOeWUU+jSpQsdO3Zk7ty5ALRo0YKdO3cCcNFFF9G9e3c6dOjAhAkTMo9XtWpVhg8fznHHHceJJ57Itm3bSv9FiYiIiJRR27bB66+7Sr3NmoU7mrLv6qtdReOdO+GEE8pHReP586FLF3j1Vbj3Xli0CLp1C3dUUlaV/982Ft0Ne34r3mPW6gLdnz/iJjNmzKBfv360bduW2rVr8+uvv/K///2Pvn37Mnz4cHw+H4cOHTpsv4kTJ1K7dm2SkpI4/vjjufTSS6lTpw4HDx7kxBNPZNSoUdx///28/vrrPPTQQ8X7ukRERETKqeeec2M+hw4NdyTlR+/ergjUuefCaafB22+7YlBlTWqq6w791FOuiNP//ufmiRU5ErXIFtLUqVMZMGAAAAMGDGDq1Kkcf/zxvPXWW4wcOZJly5ZRLZeJzV588cXMVteNGzeyZs0aAKKiojjvvPMA6N69OwkJCaX2WkRERETKsj17YPx46N8f2rYNdzTlS5s2rqXzhBNc4aQnnihbFY2XLXPVlkePdgWqli5VEiuhKf8tsvm0nJaEXbt28e2337J8+XKMMfh8PowxPP3003z//fd8/vnnXHPNNfz73/9m0KBBmfvNmTOH2bNnM3/+fKpUqUKfPn1ITk4GIDIyEhOYCMvr9ZKenl7qr0tERESkLHrpJThwAB58MNyRlE8ZFY1vuAEefthNYTRhAkRFhS8mnw+eecbFU7MmfPopXHBB+OKR8kctsoXw4YcfMmjQIDZs2EBCQgIbN26kZcuWfP/999SvX59//vOfXH/99fz666/Z9tu3bx+1atWiSpUqrFq1ip9++ilMr0BERESkfEhMhBdegPPPh86dwx1N+RUd7So+Z1Q0Puus8FU0XrcO+vSBBx6A886D5cuVxErBlf8W2TCYOnUqQ3MM0Lj00ksZPHgwcXFxREZGUrVqVd55551s2/Tr149XX32Vzp07c8wxx3DiiSeWZtgiIiIi5c6rr7qEa/jwcEdS/mVUNG7dGq67zlU0/vxzt1warHUFu/71L1eFePJkN+9toFOiSIEYW5Y6yeciPj7eLly4MNu6lStX0r59+zBFJIWhz0xEREQKKjkZWraEDh1cBV4pPnPnwsUXu8effgo9e5bs+bZudV2bv/gCTj8d3nrLFXYSATDGLLLWxhdkH3UtFhEREZEyaeJE+PtvtcaWhN69XRGo2rVdReOpU0vuXB98AB07umrEL74Is2YpiZWiUyIrIiIiImVOWho8/bTr/tqnT7ijqZgyKhqfeKKraPz448Vb0XjPHtd1+PLLXfflxYvhjjvAowxEioH+jERERESkzJkyBTZscK2xGkNZcurUcS2kV18NjzwCgwdDSkrRjztrlmuFnT4dHnsM5s2DY44p+nFFMiiRFREREZEyxedz84p26QLnnBPuaCq+jIrGjz7q7otS0fjgQbjtNujbF2rUgJ9+clPsRKjErBQzJbIiIiIiUqZ89BH88YebN1atsaXDGNciO2WKSz5PPNHNN1sQ8+e7Hx9eecVVJl60CLp3L5FwRYqWyBpj7jHGrDDGLDfGTDXGxBhjahtjvjbGrAnc1wrafpgxZq0xZrUxpm/RwxcRERGRisRaePJJ1w31kkvCHU3lM3AgfPONa5E98UT44Yf890lNdV3Ae/VyY5u//RaeeQZiY0s+Xqm8Cp3IGmMaA3cC8dbajoAXGAAMBb6x1rYBvgksY4w5NvB8B6AfMN4Y4y1a+OFjjOGaa67JXE5PT6devXqcd955BTpOnz59yJhe6JxzzmHv3r3s3buX8ePHF2u8IiIiIuXB55/DkiUwbBh4y+03xfKtVy/XKlu7tpsq57338t522TLo0cP9+DB4MCxdquJcUjqK2rU4Aog1xkQAVYAtwIXApMDzk4CLAo8vBKZZa1OsteuBtUCPIp4/bOLi4li+fDlJSUkAfP311zRu3LhIx/ziiy+oWbNmoRJZay1+vz/PZREREZGyzloYNQpatHAtgxI+rVtnVTS+6ipXsCm4orHPB2PHQny8myP200/hzTehevXwxSyVS6ETWWvtZmAc8BewFdhnrZ0FHGWt3RrYZitQP7BLY2Bj0CE2BdYdxhhzozFmoTFm4Y4dOwobYok7++yz+fzzzwGYOnUqV155ZeZzBw8e5LrrruP444+na9eufPrppwAkJSUxYMAAOnfuzBVXXJGZCAO0aNGCnTt3MnToUNatW0eXLl3497//DcDYsWM5/vjj6dy5MyNGjAAgISGB9u3bc+utt9KtWzfmzp2bbXnjxo3ccsstxMfH06FDh8z9Ms41YsQIunXrRqdOnVi1atUR405ISKB3795069aNbt268eOPPwIwZ84c+vTpw2WXXUa7du246qqrsMVZt11EREQqjf/9z7UE3n8/REaGOxrJqGh8zTUwYgRce62raPznn67V9f774dxzYflyuOCCcEcrlU2h64cFxr5eCLQE9gIfGGOuPtIuuazLNeOx1k4AJgDEx8cfOSta+xckHgoh4gKoWgVaN8t3swEDBvDYY49x3nnnsXTpUq677jrmzp0LwKhRozjttNOYOHEie/fupUePHpxxxhm89tprVKlShaVLl7J06VK6det22HHHjBnD8uXL+e233wCYNWsWa9asYcGCBVhrueCCC/j+++9p1qwZq1ev5q233mL8+PEkJCRkW86Io3bt2vh8Pk4//XSWLl1K586dAahbty6//vor48ePZ9y4cbzxxht5xl2/fn2+/vprYmJiWLNmDVdeeWVml+jFixezYsUKGjVqRM+ePZk3bx69evUqjk9CREREKpFRo6BhQxgyJNyRSIboaJg0yc05+8gjsGIFrF7tun2/846btkcFuSQcilII+wxgvbV2B4Ax5mPgZGCbMaahtXarMaYhsD2w/SagadD+TXBdkcutzp07k5CQwNSpUzknR234WbNmMXPmTMaNGwdAcnIyf/31F99//z133nln5v4ZSeWRzJo1i1mzZtG1a1cAEhMTWbNmDc2aNaN58+aceOKJmdvmXJ4+fToTJkwgPT2drVu38vvvv2ee85JABYXu3bvz8ccfHzHuRo0acfvtt/Pbb7/h9Xr5448/Ms/Ro0cPmjRpAkCXLl1ISEhQIisiIiIF8tNPrkjQuHEQExPuaCSYMW4Kndat3Y8MPXvCW29Bs/zbfURKTFES2b+AE40xVYAk4HRgIXAQuBYYE7j/NLD9TOA9Y8yzQCOgDbCgCOd3Qmg5LUkXXHAB9913H3PmzGHXrl2Z6621fPTRRxyTy8zPpoA/W1lrGTZsGDfddFO29QkJCcTFxWVbF7y8fv16xo0bxy+//EKtWrUYPHgwycnJmc9HR0cD4PV6SU9PP2LcI0eO5KijjmLJkiX4/X5igv6HyThOzmOJiIiIhGrUKFdcKMfXHSlDrrwSzjsPqlZVK6yEX1HGyP4MfAj8CiwLHGsCLoE90xizBjgzsIy1dgUwHfgd+Aq4zVrrK1L0ZcB1113HI488QqdOnbKt79u3Ly+99FLmeNHFixcDcMoppzBlyhQAli9fztKlSw87ZrVq1Thw4EC2Y02cOJHExEQANm/ezPbt2w/bL6f9+/cTFxdHjRo12LZtG19++WW+++QV9759+2jYsCEej4fJkyfj85X7j05ERETKiCVL4LPP4O67XZIkZVe1akpipWwoSoss1toRwIgcq1NwrbO5bT8KGFWUc5Y1TZo04a677jps/cMPP8zdd99N586dsdbSokULPvvsM2655RaGDBlC586d6dKlCz16HF64uU6dOvTs2ZOOHTty9tlnM3bsWFauXMlJJ50EQNWqVXn33Xfx5lOT/rjjjqNr16506NCBVq1a0bNnz3xfT15x33rrrVx66aV88MEH/OMf/zisJVhERESksJ580iVIt98e7khEpLwwZb3CbHx8vM0oKpRh5cqVtG/fPkwRSWHoMxMREZHcrF4N7dvDAw/A6NHhjkZEwsEYs8haG1+QfYo6j6yIiIiISKGNGeOKO91zT7gjEZHyRImsiIiIiITFhg3w7rvwz39C/frhjkZEyhMlsiIiIiISFk8/7QoH/fvf4Y5ERMqbcpvIlvWxvZJFn5WIiIjktHUrvPkmXHstBKajFxEJWblMZGNiYti1a5cSpHLAWsuuXbuyzTsrIiIi8uyzkJbmijyJiBRUkabfCZcmTZqwadMmduzYEe5QJAQxMTE00U+tIiIiErBrF7zyCgwYAK1bhzsaESmPymUiGxkZScuWLcMdhoiIiIgUwosvwsGDMGxYuCMRkfKqXHYtFhEREZHyaf9+l8hedBF07BjuaESkvFIiKyIiIiKl5pVXYO9eGD483JGISHmmRFZERERESkVSkivydNZZEB8f7mhEpDxTIisiIiIipeKNN2D7drXGikjRKZEVERERkRKXmgpPPw29esEpp4Q7GhEp78pl1WIRERERKV8mT4ZNm+D118MdiYhUBGqRFREREZESlZ4OY8ZA9+7Qt2+4oxGRikAtsiIiIiJSoj74ANauhY8+AmPCHY2IVARqkRURERGREuP3w5NPwrHHurljRUSKg1pkRURERKTE/Oc/sHy5GyPrUROKiBQTXU5EREREpERYC6NGQatWMGBAuKMRkYpELbIiIiIiUiJmz4ZffoHXXoMIfesUkWKkFlkRERERKRGjRkHjxnDtteGOREQqGv02JiIiIiLFbt48+O47eO45iI4OdzQiUtGoRVZEREREit2oUVC3Lvzzn+GOREQqIiWyIiIiIlKsfv0VvvwS7rkH4uLCHY2IVERKZEVERESkWD35JNSoAbfdFu5IRKSiKlIia4ypaYz50Bizyhiz0hhzkjGmtjHma2PMmsB9raDthxlj1hpjVhtj+hY9fBEREREpS1auhI8/httvd8msiEhJKGqL7AvAV9badsBxwEpgKPCNtbYN8E1gGWPMscAAoAPQDxhvjPEW8fwiIiIiUoaMHg2xsXD33eGORETKhdWrC7VboRNZY0x14BTgTQBrbaq1di9wITApsNkk4KLA4wuBadbaFGvtemAt0KOw5xcRERGRsuXPP+G99+Cmm1yhJxGRPP30E5x/PrRrV6jdi9Ii2wrYAbxljFlsjHnDGBMHHGWt3QoQuK8f2L4xsDFo/02BdYcxxtxojFlojFm4Y8eOIoQoIiIiIqXl6afB64X77gt3JCJSJlkL33wDp50GJ50E8+fD448X6lBFSWQjgG7AK9barsBBAt2I82ByWWdz29BaO8FaG2+tja9Xr14RQhQRERGR0rB5M7z1FgwZAo0ahTsaESlTrIX//Mclr2ecAatWwTPPQEICPPRQoQ5ZlER2E7DJWvtzYPlDXGK7zRjTECBwvz1o+6ZB+zcBthTh/CIiIiJSRjzzDPh88MAD4Y5ERMoMnw/efx+6dIELLoDt2+HVV904hH/9C6pWLfShC53IWmv/BjYaY44JrDod+B2YCVwbWHct8Gng8UxggDEm2hjTEmgDLCjs+UVERESkbNi5E157DQYOhJYtwx2NiIRdaipMnAjt28OAAZCWBu+8A3/84QbRx8QU+RQRRdz/DmCKMSYK+BMYgkuOpxtjrgf+AvoDWGtXGGOm45LddOA2a62viOcXERERkTB7/nlISoJhw8IdiYiEVVISvPmmGzC/cSN07QoffggXXwyeok6Yk52xNtdhqmVGfHy8XbhwYbjDEBEREZFc7NsHzZu7YW8ffhjuaEQkLPbvh1degWefdd2He/WC4cOhb18wuZVKys4Ys8haG1+QUxa1RVZEREREKrGXX3bJ7PDh4Y5ERErdrl3w4ovutncvnHWWuxicckqJn1qJrIiIiIgUysGD8NxzcPbZrgehiFQSW7e61tdXXnEXgosvdmMLjj++1EJQIisiIiIihfL6667Qk1pjRSqJhAQYO9aNg01LgyuvdAlshw6lHooSWREREREpsJQU93321FOhZ89wRyMiJWrVKhgzBqZMcWNeBw92c20dfXTYQlIiKyIiIiIF9vbbsGWLuxeRCuq332DUKPjoIzdlzu23w733QpMm4Y5MiayIiIiIFEx6Ojz1lBsOd8YZ4Y5GRIrdjz+6BPaLL6B6ddd9+O67oV69cEeWSYmsiIiIiBTI1Kmwfr0r9BTCzBoiUh5YC9984xLYOXOgbl144gm47TaoWTPc0R1GiayIiIiIhMzvh9GjoVMnOP/8cEcjIkXm98N//gNPPgkLFkCjRu5Xqn/+E+Liwh1dnpTIioiIiEjIPvkEVq50rbIeT7ijEZFC8/lg+nSXwC5fDq1awWuvwbXXQnR0uKPLly4/IiIiIhISa12vwzZtoH//cEcjIoWSmuqmz2nXDgYOdC2y774Lq1fDjTeWiyQW1CIrIiIiIiH66itYvNh9B/Z6wx2NiBTIoUPwxhtu3qxNm6B7d/j4Y7jwwnLZvUKJrIiIiIjkK6M1tmlTuPrqcEcjIiHbvx/Gj4dnn4UdO6B3b5fQnnVWua7WpkRWRERERPL1/fcwbx689BJERYU7GhHJ186d8OKL7h/t3r3Qrx88+KBLZCsAJbIiIiIikq9Ro+Coo+D668MdiYgc0ZYt8MwzrnDTwYNwySUuge3ePdyRFSslsiIiIiJyRL/8Al9/DU89BbGx4Y5GRHK1fj08/TRMnOgqEg8cCEOHwrHHhjuyEqFEVkRERESOaNQoqFULbrkl3JGIyGFWroQxY2DKFFeFbcgQuP9+N51OBaZEVkRERETytGwZfPopjBgB1aqFOxoRyfTrr24O2I8/dl0l7rwT7r0XGjcOd2SlQomsiIiIiORp9GioWtV9RxaRMuCHH1w3ia++gho13PjXu++GunXDHVmpKn8TBomIiIhIqVi7Ft5/33Uprl073NGUnC1btjBt2jSSkpLCHYpI7qyFWbPg1FNd1eFFi1xr7IYN8MQTlS6JBSWyIiIiIpKHMWMgMhL+9a9wR1JyZs2axXHHHceVV15Jy5YtGTt2LAcOHAh3WCKO3w8zZkCPHtC3L6xbB88/DwkJMGyYa5GtpJTIioiIiMhhNm6Ed96BG26ABg3CHU3x8/l8PPzww/Tr148GDRowdepUOnXqxP3330/z5s0ZOXIku3fvDneYUlmlp7viTZ07w8UXw5498PrrLpG96y6oUiXcEYadElkREREROczYsa434/33hzuS4rd161bOOOMMnnjiCQYPHszPP//MgAED+Prrr/n555/p3bs3jz76KM2bN+f+++/n77//DnfIUlmkpLiEtV07uPpqt27KFFi1yv2qFB0d3vjKECWyIiIiIpLNtm3uu/Q110CzZuGOpnh98803dO3alZ9//pm3336biRMnUiWodatHjx58+umnLF26lPPPP59nnnmGFi1acNttt7Fhw4YwRi4V2qFD8MILcPTRcOONbr6rTz6BpUvdfLARqtGbkxJZEREREcnmuecgNRWGDg13JMXH5/Px6KOPcuaZZ1K7dm1++eUXrr322jy379SpE++99x6rVq3i6quv5vXXX6d169YMGTKE1atXl2LkUqHt2+eKNjVv7ioPt27tijotWAAXXQQepWt50TsjIiIiIpn27IHx46F/f2jbNtzRFI9t27bRr18/Ro4cydVXX80vv/xChw4dQtq3TZs2vPHGG6xbt45bbrmFadOm0b59e6644gqWLFlSwpFLhbVzJzz0kEtghw+H44930+rMmQNnngnGhDvCMq/IiawxxmuMWWyM+SywXNsY87UxZk3gvlbQtsOMMWuNMauNMX2Lem4RERERKV4vvQQHDripKSuCOXPm0KVLF3744QfeeOMNJk2aRFxcXIGP07RpU1588UU2bNjAAw88wJdffkmXLl0477zzmD9/fglELhXS5s2uDHjz5q4l9swz4ddf4YsvoGfPcEdXrhRHi+xdwMqg5aHAN9baNsA3gWWMMccCA4AOQD9gvDHGWwznFxEREZFikJjohumdf74rllqe+f1+Ro0axemnn0716tX5+eefuf766zFFbOmqX78+o0ePZsOGDTz22GPMnz+fk08+mdNOO41vvvkGa20xvQKpUP78E266CVq1ghdfhMsugxUr4IMPoGvXcEdXLhUpkTXGNAHOBd4IWn0hMCnweBJwUdD6adbaFGvtemAt0KMo5xcRERGR4vPqq7B7t+vpWJ7t2LGDc845h4ceeogrrriChQsX0rmYM/NatWrx8MMPs2HDBp555hlWrVrFGWecwUknncTMmTOV0Irz+++ualrbtvD223DddbBmDUyaBO3bhzu6cq2oLbLPA/cD/qB1R1lrtwIE7usH1jcGNgZttymw7jDGmBuNMQuNMQt37NhRxBBFREREJD/JyfDMM3D66XDCCeGOpvB++OEHunbtypw5c3j11VeZMmUK1apVK7HzVa1alX/961/8+eefvPLKK2zbto0LL7yQ4447jmnTpuHz+Urs3FJGWQvz5sGll0KHDq768N13w/r18Mor0LJluCOsEAqdyBpjzgO2W2sXhbpLLuty/anKWjvBWhtvrY2vV69e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rbfg558hIsJ9Dtdd535kiCha4lWm+NMgaeuRx6QmbQHry76fJzpHy2nTwxPWmHpgSv7HEiWyIiIiInJES5ZAly7w2GOuobKssNYyYcIE7rrrLurWrcu0adMyKxQXWHIyjBjhmpybNHGtcaefXrwB58Xnc92YM4pFJSS4YlEnn5xVLKp16yKdIj09nWnTpjF69Gh+//13WrduzQMPPMCgQYOIKoV5cMssvx/mzHHJ60cfuR8YOnRwc75edRXUrx/uCAvOl+KS0CMlqcl/u27BwbxVIK5pnmNSiW0C0XXKTAVmJbIiIiIickRXXAFffulaY4tS+Lc4HThwgJtuuompU6fSt29fJk+eTL169Qp3sF9+cdVmV66EG2+EsWPDN/bRWli2LKtY1OLFbn2HDllJbffuhU4m/H4/M2bMYNSoUfz66680adKEf//739xwww1UyajCXBls2ACTJrkENiHBdfEeONB1HY6PLzPJ2mHSk1x33pwFk4KT1eTth+8XWT3vsagZraqRNcru686FElkRERERydPq1a7g7gMPuFpHZcHSpUvp378/a9eu5fHHH2fo0KGF60qckuKamZ96Cho2hDfegL59iz/gokhIgE8/dUnt99+7FsQmTbKS2lNOKdQ8SNZaZs2axahRo5g7dy716tXjnnvu4bbbbqN6RS1glJTk3seJE93cv9a6rtxDhrju3LGx4Y3PlwKJ6/MunJS0CVJ2Hb5fVK3sXXwPS1Ybu0S2glEiKyIiIiJ5GjIE3n/f5VPh7mVprWXixIncfvvt1KpVi6lTp3LqqacW7mC//upaYZcvd2Mgn33WtcqFav862PIL1G4KNTtCVAH2LaydO7OKRf33vy4xq1kTzjsvq1hUQasqA3PnzmXUqFH897//pUaNGtxxxx2Z3bXLPWvdFEgTJ8J777lxsC1auHHQ117rHodD8nbYswT2LoE9v8GeJdj9KzE5x6RG18u9i29wkhpR8M+8IlAiKyIiIiK52rDBDc289VY3jWo4HTx4kFtuuYXJkydzxhln8O6773JUYYohpabCqFHudtRR8PrrcM45oe+fmABLp0PSsRDRAPxJkPob+NdBbBLUqAO1OkHNTlD9mCNOH1Ikhw7B119nFYvavdvNiXTmmS6pPf98KGBX64ULFzJ69Gg+/vhjqlSpws0338y9995Lo0aNSuQllKgdO+Dd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\n",
+      "text/plain": [
+       "<Figure size 1152x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "plot_kwargs = dict(figsize=(16,4),color=['black', 'red', 'blue', 'orange', 'pink'],title='Region - Quarterly')\n",
+    "regions.plot(**plot_kwargs)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Indian food not only takes the lead but smokes the competition in this chart. American comes up in second and then blows it to get passed by French and Asian cuisine. You hate to see it.\n",
+    "# And just barely making the chart is Medierranean sitting pretty in pink. I love mediterranean food and so i'm hoping that theres less reviews for this region of cuisine because the guests\n",
+    "# were left speachless. Realistically, these reviews look like they were scraped from either Pakistan or India and so this chart makes sense when seen from that perspective. After one \n",
+    "# google search, I recognized one of the words from the reviews \"zomato\" in the results and that was the give away. "
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
